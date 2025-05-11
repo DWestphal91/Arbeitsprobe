@@ -1,5 +1,5 @@
 /**
- * @file WestfalenWeser_Monatsberechnung_Vormonat_Einzelwert.js
+ * @file WestfalenWeser_Monatsberechnung_Vormonat_Erweitert.js
  * @brief Berechnet den monatlichen Stromverbrauch und die Einspeisung. Behandelt auch Erstmessungen korrekt.
  * 
  * Dieses Skript nimmt zwei Arrays mit Zählerständen entgegen und berechnet die Differenz über den Monatswechsel.
@@ -7,7 +7,7 @@
  * Wenn keine früheren Daten im Monat existieren, wird der letzte Monatswert als Gesamtdifferenz interpretiert (Erstmessung).
  *
  * @author Daniel Westphal
- * @date 2025-05-04
+ * @date 2025-05-11
  */
 
 /**
@@ -77,15 +77,15 @@ function getDeltaWithFallback(timestampedValues) {
     };
   }
 
-  const delta = parseFloat((lastOfCurrent.value - lastOfPrev.value).toFixed(2));
+  const deltaTimestampedValues = parseFloat((lastOfCurrent.value - lastOfPrev.value).toFixed(2));
   // Wenn der Delta-Wert 0 ist, wird eine Erklärung zurückgegeben
-  if (delta === 0) {
+  if (deltaTimestampedValues === 0) {
     return {
       info: "Keine Änderung im Zeitraum festgestellt"
     };
   }
 
-  return delta;
+  return deltaTimestampedValues;
 }
 
 /**
