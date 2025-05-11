@@ -1,6 +1,6 @@
 /**
  * @file WestfalenWeser_Monatsberechnung_Vormonat_Erweitert.js
- * @brief Berechnet den monatlichen Stromverbrauch und die Einspeisung. Behandelt auch Erstmessungen korrekt.
+ * @brief Berechnet den monatlichen Stromverbrauch, die Einspeisung und den Nettoverbrauch.
  * 
  * Dieses Skript nimmt zwei Arrays mit Zählerständen entgegen und berechnet die Differenz über den Monatswechsel.
  * Bei nur einem Wert im Monat wird dieser direkt zurückgegeben.
@@ -31,10 +31,10 @@ const consumption = [
 ];
 
 /**
- * Berechnet den Energieverbrauch für einen Monat. Behandelt Erstmessungen, Einzelwerte und konstante Werte.
+ * Berechnet den Energieverbrauch für einen Monat.
  *
- * @param {Messpunkt[]} timestampedValues - Messdatenreihe (z. B. feed oder consumption)
- * @returns {number|Object} - Delta-Wert oder erklärendes Objekt
+ * @param {Messpunkt[]} timestampedValues - Messdatenreihe
+ * @returns {number|Object}
  */
 function getDeltaWithFallback(timestampedValues) {
   if (!timestampedValues || timestampedValues.length === 0) return 0;
@@ -56,7 +56,6 @@ function getDeltaWithFallback(timestampedValues) {
   const currentMonthtimestampedValues = [...sorted]
     .filter(e => e.date.getUTCFullYear() === year && e.date.getUTCMonth() === month);
 
-  const firstOfCurrent = currentMonthtimestampedValues[0];
   const lastOfCurrent = currentMonthtimestampedValues[currentMonthtimestampedValues.length - 1];
 
   if (!lastOfCurrent) return 0;
@@ -69,7 +68,6 @@ function getDeltaWithFallback(timestampedValues) {
     };
   }
 
-  // Sonderfall: keine früheren Daten im Monat → Erstmessung
   if (!lastOfPrev) {
     return {
       info: "Erstmessung – vollständiger Monatswert übernommen",
@@ -78,10 +76,11 @@ function getDeltaWithFallback(timestampedValues) {
   }
 
   const deltaTimestampedValues = parseFloat((lastOfCurrent.value - lastOfPrev.value).toFixed(2));
-  // Wenn der Delta-Wert 0 ist, wird eine Erklärung zurückgegeben
+
   if (deltaTimestampedValues === 0) {
     return {
-      info: "Keine Änderung im Zeitraum festgestellt"
+      info: "Keine Änderung im Zeitraum festgestellt",
+      value: 0
     };
   }
 
@@ -89,19 +88,31 @@ function getDeltaWithFallback(timestampedValues) {
 }
 
 /**
- * Hauptfunktion zur Monatsberechnung für Einspeisung und Verbrauch.
+ * Hauptfunktion zur Monatsberechnung inkl. Nettoverbrauch.
  *
  * @param {Messpunkt[]} feed - Einspeisung
  * @param {Messpunkt[]} consumption - Verbrauch
- * @param {number} year - Jahr (z. B. 2025)
+ * @param {number} year - Jahr
  * @param {number} month - Monat (0-basiert)
- *
- * @returns {{feed_monthly: number|Object, consumption_monthly: number|Object}} Ergebnis
+ * @returns {{
+ *   feed_monthly: number|Object,
+ *   consumption_monthly: number|Object,
+ *   net_consumption: number
+ * }}
  */
 function calculateMonthlyConsumption(feed, consumption) {
+  const feedResult = getDeltaWithFallback(feed);
+  const consumptionResult = getDeltaWithFallback(consumption);
+
+  const feedValue = typeof feedResult === "object" ? feedResult.value ?? 0 : feedResult;
+  const consumptionValue = typeof consumptionResult === "object" ? consumptionResult.value ?? 0 : consumptionResult;
+
+  const net = parseFloat((consumptionValue - feedValue).toFixed(2));
+
   return {
-    feed_monthly: getDeltaWithFallback(feed),
-    consumption_monthly: getDeltaWithFallback(consumption)
+    feed_monthly: feedResult,
+    consumption_monthly: consumptionResult,
+    net_consumption: net
   };
 }
 
@@ -114,3 +125,4 @@ const result = calculateMonthlyConsumption(feed, consumption, year, month);
 console.log("Monatlicher Verbrauch:");
 console.log("Einspeisung (EPm):", result.feed_monthly);
 console.log("Verbrauch (EPp):", result.consumption_monthly);
+console.log("Nettoverbrauch:", result.net_consumption);
