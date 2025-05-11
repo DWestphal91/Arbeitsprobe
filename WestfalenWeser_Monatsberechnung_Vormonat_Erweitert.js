@@ -1,10 +1,10 @@
-
 /**
  * @file WestfalenWeser_Monatsberechnung_Vormonat_Einzelwert.js
- * @brief Berechnet den monatlichen Stromverbrauch und die Einspeisung. Gibt bei nur einem Monatswert diesen direkt zurück.
+ * @brief Berechnet den monatlichen Stromverbrauch und die Einspeisung. Behandelt auch Erstmessungen korrekt.
  * 
  * Dieses Skript nimmt zwei Arrays mit Zählerständen entgegen und berechnet die Differenz über den Monatswechsel.
- * Wenn nur ein Wert im Monat vorhanden ist, wird dieser mit Zeitstempel zurückgegeben.
+ * Bei nur einem Wert im Monat wird dieser direkt zurückgegeben.
+ * Wenn keine früheren Daten im Monat existieren, wird der letzte Monatswert als Gesamtdifferenz interpretiert (Erstmessung).
  *
  * @author Daniel Westphal
  * @date 2025-05-04
@@ -31,11 +31,10 @@ const consumption = [
 ];
 
 /**
- * Berechnet den Energieverbrauch für einen Monat. Nutzt den letzten Wert des Vormonats oder fällt zurück auf den ersten Monatswert.
- * Gibt bei nur einem Wert im Monat diesen direkt zurück.
+ * Berechnet den Energieverbrauch für einen Monat. Behandelt Erstmessungen, Einzelwerte und konstante Werte.
  *
  * @param {Messpunkt[]} timestampedValues - Messdatenreihe (z. B. feed oder consumption)
- * @returns {number|Object} - Delta-Wert oder Einzelwertobjekt
+ * @returns {number|Object} - Delta-Wert oder erklärendes Objekt
  */
 function getDeltaWithFallback(timestampedValues) {
   if (!timestampedValues || timestampedValues.length === 0) return 0;
@@ -60,19 +59,33 @@ function getDeltaWithFallback(timestampedValues) {
   const firstOfCurrent = currentMonthtimestampedValues[0];
   const lastOfCurrent = currentMonthtimestampedValues[currentMonthtimestampedValues.length - 1];
 
+  if (!lastOfCurrent) return 0;
+
   if (currentMonthtimestampedValues.length === 1) {
     return {
-      info: "Nur ein Messwert vorhanden",
+      info: "Nur ein Messwert im Monat vorhanden",
       value: currentMonthtimestampedValues[0].value,
       timestamp: currentMonthtimestampedValues[0].ts
     };
   }
 
-  if (!lastOfCurrent) return 0;
+  // Sonderfall: keine früheren Daten im Monat → Erstmessung
+  if (!lastOfPrev) {
+    return {
+      info: "Erstmessung – vollständiger Monatswert übernommen",
+      value: lastOfCurrent.value
+    };
+  }
 
-  const start = lastOfPrev || firstOfCurrent;
+  const delta = parseFloat((lastOfCurrent.value - lastOfPrev.value).toFixed(2));
+  // Wenn der Delta-Wert 0 ist, wird eine Erklärung zurückgegeben
+  if (delta === 0) {
+    return {
+      info: "Keine Änderung im Zeitraum festgestellt"
+    };
+  }
 
-  return parseFloat((lastOfCurrent.value - start.value).toFixed(2));
+  return delta;
 }
 
 /**
