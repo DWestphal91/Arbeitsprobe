@@ -98,7 +98,7 @@ function getDeltaWithFallback(timestampedValues) {
  *
  * @returns {{feed_monthly: number|Object, consumption_monthly: number|Object}} Ergebnis
  */
-function calculateMonthlyConsumption(feed, consumption, year, month) {
+function calculateMonthlyConsumption(feed, consumption) {
   return {
     feed_monthly: getDeltaWithFallback(feed),
     consumption_monthly: getDeltaWithFallback(consumption)
